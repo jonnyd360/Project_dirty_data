@@ -1,0 +1,129 @@
+---
+title: "decathlon_cleaning"
+output: html_document
+---
+
+Initiate all required libraries
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readr)
+library(here)
+library(data.table)
+
+```
+
+Pulling the data set into RStudio
+
+```{r}
+
+decathlon <- read_rds(here("raw_data/decathlon.rds"))
+
+```
+
+Viewing the data 
+
+```{r}
+
+view(decathlon)
+
+
+```
+
+
+Cleaning script for decathlon data set
+
+```{r}
+
+decathlon_clean <- decathlon %>% 
+  clean_names() %>% 
+  setDT(keep.rownames = "name")
+
+view(decathlon_clean)
+
+```
+
+The contestant with the longest long jump seen in the data?
+
+```{r}
+
+longest_long_jump <- decathlon_clean %>%
+  select(name, long_jump) %>% 
+  arrange(desc(long_jump)) %>% 
+  head(1)
+
+longest_long_jump
+   
+```
+
+The average 100m time in each competition
+
+```{r}
+
+decathlon_clean %>% 
+  select(x100m) %>% 
+  summarise("average 100m" = mean(x100m))
+
+```
+
+The contestant with the highest total points across both competitions, i.e the Decaster and OlympicG.
+
+```{r}
+decathlon_clean %>%
+  select(name, points,competition) %>% 
+  filter(competition == "Decastar") %>% 
+  arrange(desc(points)) %>% 
+  slice_max(1)
+
+decathlon_clean %>%
+  select(name, points,competition) %>% 
+  filter(competition == "OlympicG") %>% 
+  arrange(desc(points)) %>% 
+  slice_max(1)
+
+```
+
+The shot-put scores for the top three competitors in each competition.
+
+```{r}
+# I think there is a better way 
+
+decathlon_clean %>%
+  select(name, shot_put,competition) %>% 
+  filter(competition == "Decastar") %>% 
+  arrange(desc(shot_put)) %>% 
+  head(3)
+
+decathlon_clean %>%
+  select(name, shot_put,competition) %>% 
+  filter(competition == "OlympicG") %>% 
+  arrange(desc(shot_put)) %>% 
+  head(3)
+
+
+```
+
+Average points for competitors who ran the 400m in less than 50 seconds vs. those than ran 400m in more than 50 seconds.
+
+```{r}
+  
+avg_below_50s <- decathlon_clean %>% 
+  select(x400m) %>% 
+  filter(x400m < 50) %>% 
+  summarise(mean(x400m)) %>% 
+  pull()
+
+avg_above_50s <- decathlon_clean %>% 
+  select(x400m) %>% 
+  filter(x400m > 50) %>% 
+  summarise(mean(x400m)) %>% 
+  pull()
+
+comparison <- list("avg_below_50s" = avg_below_50s, 
+                   "avg_above_50s" = avg_above_50s)
+
+comparison
+
+```
+

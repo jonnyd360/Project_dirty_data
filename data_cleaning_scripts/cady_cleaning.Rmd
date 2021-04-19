@@ -1,0 +1,56 @@
+---
+title: "Halloween Candy Data"
+output: html_document
+---
+
+Load Libraries
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(readr)
+library(here)
+library(data.table)
+library(readxl)
+
+```
+
+Reading in the excel files
+
+```{r}
+
+candy_2015 <- read_excel(here("raw_data/candy_ranking_data/boing-boing-candy-2015.xlsx"))
+
+candy_2016 <- read_excel(here("raw_data/candy_ranking_data/boing-boing-candy-2016.xlsx")) 
+
+candy_2017 <- read_excel(here("raw_data/candy_ranking_data/boing-boing-candy-2017.xlsx"))         
+
+```
+
+Cleaning the data sets
+
+```{r}
+
+candy_2015 <- clean_names(candy_2015)
+candy_2016 <- clean_names(candy_2016)
+candy_2017 <- clean_names(candy_2017)  
+
+names(candy_2015)
+
+candy_2015_clean <- candy_2015 %>% 
+  select()
+
+
+names(candy_2016)
+
+candy_2016_clean <- candy_2016 %>% 
+  mutate(select(1:102)
+
+names(candy_2017)
+
+candy_2017_clean <- candy_2017 %>% 
+  select(1:105)
+
+```
+

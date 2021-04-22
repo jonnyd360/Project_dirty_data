@@ -3,7 +3,7 @@ title: "Halloween Candy Data"
 output: html_document
 ---
 
-Load Libraries
+Loadin in all the required Libraries
 
 ```{r}
 
@@ -16,7 +16,7 @@ library(readxl)
 
 ```
 
-Reading in the excel files
+Reading in the excel files in to Rstudio
 
 ```{r}
 
@@ -30,27 +30,350 @@ candy_2017 <- read_excel(here("raw_data/candy_ranking_data/boing-boing-candy-201
 
 Cleaning the data sets
 
+At this stage, the idividual data sets are organized prior to combining them and further cleaning. The following steps were followed: 
+
+1) Columns that were eralavan to the final data analysis are removed.
+2) The year column is created corresponding to when the data was collected.
+3) Names of the columns were also changed to give the data sets uniform set of columns.
+4) It was observered that in 2015 country and gender data was not collected, as such these columns were created and values set to NA.
+5) The observation corresponding to candy and rating were pivoted long to make the data readable.
+6) Certain columns had thier class changed.
+7) The columns were then arranged to a set order.
+
+Once the initial cleaning and organization of the data sets were done, they were combined to form one dataset the "ultra_candy" dataset. 
+
 ```{r}
 
-candy_2015 <- clean_names(candy_2015)
-candy_2016 <- clean_names(candy_2016)
-candy_2017 <- clean_names(candy_2017)  
-
-names(candy_2015)
-
 candy_2015_clean <- candy_2015 %>% 
-  select()
+  select(c(1:96, 115, -6, -33, -81)) %>% 
+  mutate(
+    year = format(as.Date(Timestamp, format="%d/%m/%Y %h/%m/%s"),"%Y"), .after = "Timestamp",
+    gender = NA,
+    country = NA
+    ) %>% 
+  setnames("Timestamp", "internal_id") %>% 
+  setnames("How old are you?", "age") %>% 
+  setnames("Are you going actually going trick or treating yourself?", "trick_or_treating") %>% 
+  pivot_longer(cols = c(7:97), 
+               names_to = "candy", 
+               values_to = "rating") %>% 
+  transform(internal_id = as.numeric(internal_id)
+            ) %>% 
+  select("internal_id", "year", "age", "gender", "country", "trick_or_treating", "candy", "rating")
 
 
-names(candy_2016)
 
 candy_2016_clean <- candy_2016 %>% 
-  mutate(select(1:102)
+   select(c(1:106, 123,-6, -8, -26, -79, -123)) %>% 
+  mutate(
+    year = format(as.Date(Timestamp, format="%d/%m/%Y %h/%m/%s"),"%Y"), .after = "Timestamp"
+    ) %>%
+  setnames("Timestamp", "internal_id") %>% 
+  setnames("How old are you?", "age") %>% 
+  setnames("Are you going actually going trick or treating yourself?", "trick_or_treating") %>% 
+  setnames("Your gender:", "gender") %>% 
+  setnames("Which country do you live in?", "country") %>% 
+  pivot_longer(cols = c(7:103), 
+               names_to = "candy", 
+               values_to = "rating") %>% 
+  transform(internal_id = as.numeric(internal_id)
+            ) %>% 
+  select("internal_id", "year", "age", "gender", "country", "trick_or_treating", "candy", "rating")
 
-names(candy_2017)
-
+  
 candy_2017_clean <- candy_2017 %>% 
-  select(1:105)
+  select(1:109, -6,  -81, -97) %>% 
+  mutate(
+    year = 2017, .after = "Internal ID"
+    ) %>% 
+  setnames("Q3: AGE", "age") %>% 
+  setnames("Q1: GOING OUT?", "trick_or_treating") %>% 
+  setnames("Q2: GENDER", "gender") %>% 
+  setnames("Q4: COUNTRY", "country") %>% 
+  pivot_longer(cols = c(7:107), 
+               names_to = "candy", 
+               values_to = "rating"
+               ) %>% 
+  select("Internal ID", "year", "age", "gender", "country", "trick_or_treating", "candy", "rating")
+  
+
+candy_2015_clean <- clean_names(candy_2015_clean)
+candy_2016_clean <- clean_names(candy_2016_clean)
+candy_2017_clean <- clean_names(candy_2017_clean)
+
+
+ultra_candy <- rbind(candy_2015_clean, candy_2016_clean, candy_2017_clean)
+
 
 ```
 
+
+Once the data set was combined, a general code was written to observe how dirty the data is and to creat a plan to clean it up. The code was writen to reveal the following: 
+
+1) Number of NA values across all the columns
+2) Distinct entries of each column
+
+
+```{r}
+ultra_candy %>% 
+  summarise(na_year = sum(is.na(year)),
+            na_age = sum(is.na(age)),
+            na_gender = sum(is.na(gender)),
+            na_country = sum(is.na(country)),
+            na_trick_or_treating = sum(is.na(trick_or_treating)),
+            na_candy = sum(is.na(candy)),
+            na_rating = sum(is.na(rating)))
+
+ultra_candy %>% 
+  group_by(country) %>% 
+  summarise(count = n())
+
+ultra_candy %>% 
+  group_by(gender) %>%
+  summarise(count = n())
+
+ultra_candy %>% 
+  distinct(trick_or_treating) %>%
+  arrange(trick_or_treating)
+
+ultra_candy %>% 
+  distinct(candy) %>%
+  arrange(candy)
+
+ultra_candy %>% 
+  distinct(rating) %>%
+  arrange(rating)
+
+```
+
+The First round of cleaning dealt with the easier to clean tasks first. this included:
+
+1) Cleaning the gender data to make it less wordy
+2) Removing NA values from country, where the raters either did not enter data or where the option was not included, such as in 2015 data set.
+3) Setting the age column to integer and the year as numeric
+4) Removing rows where there was no ratings entered (these rows are coincided unimportant as the value is in the rating of the candy, this would also improve processing speed).
+
+```{r}
+
+ultra_candy <- ultra_candy %>% 
+  mutate(gender = if_else(gender == "I'd rather not say", "Not Provided", gender))
+
+
+ultra_candy <- ultra_candy %>% 
+  mutate(trick_or_treating = coalesce(trick_or_treating, "Not Provided"))
+
+ultra_candy <- ultra_candy %>% 
+  mutate(country = coalesce(country, "Not Provided"))
+
+ultra_candy <- ultra_candy %>%
+  transform(age = as.integer(age),
+            year = as.numeric(year))
+
+ultra_candy <- ultra_candy %>% 
+  filter(rating != is.na(rating))
+
+```
+
+A summarize code was writen to see the effects of the First round of cleaning. Most of the NA's are taken care of with. The NA's in age and gender are left as is and not changed. 
+
+```{r}
+
+ultra_candy %>% 
+  summarise(na_year = sum(is.na(year)),
+            na_age = sum(is.na(age)),
+            na_gender = sum(is.na(gender)),
+            na_country = sum(is.na(country)),
+            na_trick_or_treating = sum(is.na(trick_or_treating)),
+            na_candy = sum(is.na(candy)),
+            na_rating = sum(is.na(rating)))
+
+```
+
+During the initial observation, country and candy data sets were very dirty. The Second round of cleaning will deal with these data sets.
+
+1) County : Multiple values entered for countries such as USA, UK and Canada were standardized. 
+            All other countries were set too Other.
+
+```{r}
+
+ultra_candy <- ultra_candy %>% 
+  mutate(
+    country = case_when(
+      country == "USSA"                         ~ "USA",
+      country == "USAUSAUSA"                    ~ "USA",
+      country == "USA? Hard to tell anymore.."  ~ "USA",
+      country == "USA!!!!!!"                    ~ "USA",
+      country == "USA! USA! USA!"               ~ "USA",
+      country == "USA! USA!"                    ~ "USA",
+      country == "USA USA USA!!!!"              ~ "USA",
+      country == "USA USA USA USA"              ~ "USA",
+      country == "USA USA USA"                  ~ "USA",
+      country == "USA (I think but it's an election year so who can really tell)" ~ "USA",
+      country == "USA!"                         ~ "USA",
+      country == "USa"                          ~ "USA",
+      country == "Usa"                          ~ "USA",
+      country == "uSA"                          ~ "USA",
+      country == "usa"                          ~ "USA",
+      country == "US of A"                      ~ "USA",
+      country == "Units States"                 ~ "USA",
+      country == "us"                           ~ "USA",
+      country == "Unites States"                ~ "USA",
+      country == "United Stetes"                ~ "USA",
+      country == "United Statss"                ~ "USA",
+      country == "united states of america"     ~ "USA",
+      country == "UNited States"                ~ "USA",
+      country == "US"                           ~ "USA",
+      country == "US"                           ~ "USA",
+      country == "Us"                           ~ "USA",
+      country == "united States"                ~ "USA",
+      country == "united states"                ~ "USA",
+      country == "United Stated"                ~ "USA",
+      country == "'merica"                      ~ "USA",
+      country == "Ahem....Amerca"               ~ "USA",
+      country == "america"                      ~ "USA",
+      country == "America"                      ~ "USA",
+      country == "Alaska"                       ~ "USA",
+      country == "Murica"                       ~ "USA",
+      country == "murrika"                      ~ "USA",
+      country == "N. America"                   ~ "USA",
+      country == "New Jersey"                   ~ "USA",
+      country == "New York"                     ~ "USA",
+      country == "North Carolina"               ~ "USA",
+      country == "The Yoo Ess of Aaayyyyyy"     ~ "USA",
+      country == "the best one - usa"           ~ "USA",
+      country == "Trumpistan"                   ~ "USA",
+      country == "U S"                          ~ "USA",
+      country == "u s a"                        ~ "USA",
+      country == "u.s."                         ~ "USA",
+      country == "U.S."                         ~ "USA",
+      country == "U.s."                         ~ "USA",
+      country == "u.s.a."                       ~ "USA",
+      country == "U.S.A."                       ~ "USA",
+      country == "United Sates"                 ~ "USA",
+      country == "United staes"                 ~ "USA",
+      country == "I pretend to be from Canada, but I am really from the United States." ~ "USA",
+      country == "Merica"                       ~ "USA",
+      country == "Sub-Canadian North America... 'Merica" ~ "USA",
+      country == "The United States"            ~ "USA",
+      country == "United States"                ~ "USA",
+      country == "United states"                ~ "USA",
+      country == "United Statea"                ~ "USA",
+      country == "United State"                 ~ "USA",
+      country == "Pittsburgh"                   ~ "USA",
+      country == "California"                   ~ "USA",
+      country == "United States of America"     ~ "USA",
+      
+      country == "canada"                       ~ "Canada",
+      country == "Canada"                       ~ "Canada",
+      country == "CANADA"                       ~ "Canada",
+      country == "Canada`"                      ~ "Canada",
+      
+      country == "endland"                      ~ "UK",
+      country == "england"                      ~ "UK",
+      country == "United Kingdom"               ~ "UK",
+      country == "United Kindom"                ~ "UK",
+      country == "England"                      ~ "UK",
+      country == "Uk"                           ~ "UK",
+      country == "Scotland"                     ~ "UK",
+      country == "uk"                           ~ "UK",
+      
+      TRUE                                      ~ "Other")
+    )
+
+```
+To view and check the cleaned country column
+
+```{r}
+
+ultra_candy %>% 
+  group_by(country) %>% 
+  summarise(count = n())
+
+```
+
+
+2) Candy :  Spacial characters were removed
+            Names were also standardized
+            Rows were also filtered to remove non candy related entries, however to remove the                  required rows a "not in" fuction was created, i.e "%!in%".
+
+```{r}
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+pattern <- "Q6 \\| |\\]|\\["
+  
+ultra_candy <- ultra_candy %>% 
+  mutate(candy = str_remove_all(candy, pattern),
+         candy = case_when(
+           candy == "Box’o’ Raisins"  ~ "Box'o'Raisins",
+           candy == "Candy that is clearly just the stuff given out for free at restaurants" ~ "Resturant Candy",
+           candy == "Anonymous brown globs that come in black and orange wrappers\t(a.k.a. Mary Janes)"  ~ "Mary Janes",
+           candy == "Bonkers (the candy)"                          ~ "Bonkers",
+           candy == "Chick-o-Sticks (we don’t know what that is)"  ~ "Chick-o-Sticks",
+           candy == "Creepy Religious comics/Chick Tracts"         ~ "Chick Tracts",
+           candy == "Hugs (actual physical hugs)"                  ~ "Physical Hugs",
+           candy == "JoyJoy (Mit Iodine!)"                         ~ "JoyJoy (Mit Iodine)",
+           candy == "Licorice (yes black)"                         ~ "Licorice",
+           candy == "Licorice (not black)"                         ~ "Licorice",
+           candy == "Peanut Butter Jars"                           ~ "Peanut Butter Bars",
+           candy == "Smarties (American)"                          ~ "Smarties",
+           candy == "Smarties (Commonwealth)"                      ~ "Smarties",
+           candy == "Sourpatch Kids (i.e. abominations of nature)"  ~ "Sourpatch Kids",
+           candy == "Sweetums (a friend to diabetes)"              ~ "Sweetums",
+           candy == "Tolberone something or other"                 ~ "Tolberone",
+           candy == "Vials of pure high fructose corn syrup, for main-lining into your vein"  ~ "High Fructose Corn Syrup Vials",
+           candy == "Whole Wheat anything"                         ~ "Whole Wheat",
+           candy == "Those odd marshmallow circus peanut things"   ~ "Marshmallow Circus Peanut",
+           candy == "Sandwich-sized bags filled with BooBerry Crunch"  ~ "BooBerry Crunch",
+           candy == "Abstained from M&M'ing."                      ~ "Abstaining from M&M",
+           candy == "Blue M&M's"                                   ~ "M&M Blue",
+           candy == "Brach products (not including candy corn)"    ~ "Brach Candy",
+           candy == "Green Party M&M's"                            ~ "M&M Green",
+           candy == "Independent M&M's"                            ~ "M&M Independent",
+           candy == "Peanut M&M’s"                                 ~ "M&M Peanut",
+           candy == "Red M&M's"                                    ~ "M&M Red",
+           candy == "Regular M&Ms"                                 ~ "M&M Regular",
+           candy == "Third Party M&M's"                            ~ "M&M Fake",
+           candy == "Cash, or other forms of legal tender"         ~ "Money",
+           candy == "Gummy Bears straight up"                      ~ "Gummy Bears",
+           candy == "Any full-sized candy bar"                     ~ "Any Candy Bar",
+           candy == "Mint M&Ms"                                    ~ "M&M Mint",
+
+           TRUE                                                    ~ candy
+         )) %>% 
+  filter (
+    candy %!in%
+      c("Bonkers (the board game)", 
+       "Bottle Caps",
+       "Broken glow stick",
+       "Chardonnay",
+       "Dental paraphenalia", 
+       "Generic Brand Acetaminophen", 
+       "Kale smoothie", 
+       "Pencils", 
+       "Peterson Brand Sidewalk Chalk", 
+       "Physical Hugs", 
+       "White Bread", 
+       "Whole Wheat",
+       "Money")
+    )
+
+```
+
+To view and check the cleaned candy column
+
+```{r}
+
+ultra_candy %>% 
+  distinct(candy) %>%
+  arrange(candy)
+
+```
+
+Once happy with the cleaned data the data set is saved into the "clean_data" folder for further analysis.
+
+```{r}
+
+write.csv(ultra_candy, file = here("clean_data/ultra_candy.cvs"))
+
+```

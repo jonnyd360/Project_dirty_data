@@ -1,0 +1,126 @@
+---
+title: "Candy Analysis"
+output: html_document
+---
+
+Analysis
+
+1) The total number of candy ratings given across the three years. (number of candy ratings, not number of raters and missing values not counted)
+
+```{r}
+
+ultra_candy %>% 
+  summarise(count = n())
+
+```
+
+2) The average age of people who are going out trick or treating and the average age of people and not going trick or treating (I have also added in information of the third group that did not provide any info)
+
+```{r}
+
+ultra_candy %>% 
+  filter(age %in% (7:70)) %>% 
+  distinct(internal_id, .keep_all = TRUE) %>% 
+  select(trick_or_treating, age) %>%
+  group_by(trick_or_treating) %>% 
+  summarise(mean_age = round(mean(age)))
+
+
+```
+
+3) For each of joy, despair and meh, which candy bar revived the most of these ratings?
+(it must be noted that M&M have anumber of sub groups and if combined we can find that M&M migh have higher ratings, however for the most part these will be concided as separate candy reviews)
+
+```{r}
+
+rating_all <- ultra_candy %>% 
+  select(candy, rating) %>%
+  group_by(candy) %>% 
+  summarise(ratings_count = n()) %>% 
+  arrange(desc(ratings_count))
+
+rating_m <- ultra_candy %>%
+  filter(str_detect(candy, "^M&M"), 
+         candy != "M&M Fake") %>% 
+  select(candy, rating) %>%
+  group_by(candy) %>% 
+  summarise(ratings_count = n()) %>% 
+  ungroup() %>% 
+  summarise(ratings_count = sum(ratings_count)) %>% 
+  mutate(candy = "M&M All", .before = ratings_count)
+
+all_rating <- rbind(rating_all, rating_m)
+
+all_rating 
+
+all_rating  %>% 
+  arrange(desc(ratings_count))
+ 
+```
+4) How many people rated Starburst as despair?
+
+```{r}
+
+ultra_candy %>% 
+  select(candy, rating) %>%
+  filter(candy == "Starburst",
+         rating == "DESPAIR") %>% 
+  group_by(candy) %>% 
+  summarise(ratings_count = n())
+
+
+```
+
+5) For the next three questions, we need to count despair as -1, joy as +1 and meh as 0.
+
+```{r}
+
+ultra_candy <- ultra_candy %>% 
+  mutate(rating = case_when(
+    rating == "JOY"     ~ "+1",
+    rating == "MEH"     ~ "0",
+    rating == "DESPAIR" ~ "-1",
+    TRUE                ~ rating
+  )) %>% 
+  transform(rating = as.numeric(rating))
+
+ultra_candy %>% 
+  distinct(rating)
+
+```
+
+6) What was the most popular candy bar by this rating system for each gender in the dataset?
+(NA - These data sets correspond to when the question was not asked)
+
+```{r}
+ultra_candy %>% 
+  group_by(gender, candy) %>% 
+  summarise(total_rating = sum(rating)) %>% 
+  slice_max(total_rating, n = 2)
+
+
+```
+
+7) What was the most popular candy bar in each year? (I have entered 2 candy ratings as Any Candy Bar is not really a candybar)
+
+```{r}
+
+ultra_candy %>% 
+  group_by(year, candy) %>% 
+  summarise(total_rating = sum(rating)) %>% 
+  slice_max(total_rating, n = 2)
+  
+
+```
+
+8) What was the most popular candy bar by this rating for people in US, Canada, UK and all other countries?
+
+```{r}
+
+ultra_candy %>% 
+  group_by(country,candy) %>% 
+  summarise(total_rating = sum(rating)) %>% 
+  slice_max(total_rating, n = 2)
+
+```
+

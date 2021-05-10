@@ -30,7 +30,7 @@ candy_2017 <- read_excel(here("raw_data/candy_ranking_data/boing-boing-candy-201
 
 Cleaning the data sets
 
-At this stage, the idividual data sets are organized prior to combining them and further cleaning. The following steps were followed: 
+At this stage, the individual data sets are organized prior to combining them and further cleaning. The following steps were followed: 
 
 1) Columns that were eralavan to the final data analysis are removed.
 2) The year column is created corresponding to when the data was collected.

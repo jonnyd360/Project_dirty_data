@@ -1,5 +1,5 @@
 ---
-title: "decathlon anlysis"
+title: "decathlon_anlysis"
 output: html_document
 ---
 
@@ -79,3 +79,5 @@ comparison <- list("avg_below_50s" = avg_below_50s,
                    "avg_above_50s" = avg_above_50s)
 
 comparison
+
+```
